@@ -218,3 +218,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# данные не храним в репозитории (фото и снимки тяжёлые, лимит GitHub 100 МБ)
+data/
+*.tif
+*.jp2
+*.h5
+*.keras
