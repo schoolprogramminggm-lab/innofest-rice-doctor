@@ -9,9 +9,11 @@
 
 Запуск (из корня проекта):
     python model/evaluate.py
+    python model/evaluate.py models/rice_doctor_v2.keras   # проверить другую модель
 """
 
 import json
+import sys
 
 import numpy as np
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
@@ -23,7 +25,10 @@ CLASSES_PATH = "models/classes.json"
 
 
 def main():
-    model = keras.models.load_model(MODEL_PATH)
+    # Путь к модели можно передать при запуске, иначе берём основную
+    model_path = sys.argv[1] if len(sys.argv) > 1 else MODEL_PATH
+    print("Модель:", model_path)
+    model = keras.models.load_model(model_path)
     with open(CLASSES_PATH, encoding="utf-8") as f:
         classes = json.load(f)
 
