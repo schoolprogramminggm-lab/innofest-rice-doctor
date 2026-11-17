@@ -10,7 +10,7 @@
 | Автор | Санжар, школа программирования GRAND master |
 | Наставник | Куанышбаев А. Ж. |
 | Статус | 🛠 в разработке, готовность к 3 декабря 2026 |
-| Командный проект | [AgroQyzyl](https://github.com/schoolprogramminggm-lab/innofest-agroqyzyl): этот бот работает модулем «диагностика листа» |
+| Командный проект | AgroQyzyl: командный бот живёт модулем внутри этого бота (RiceDoctor), здесь же модуль «диагностика листа» |
 
 ---
 
@@ -82,6 +82,7 @@ flowchart LR
 4. **Ответ.** Сеть выдаёт вероятность для каждого класса. Берётся класс с наибольшей вероятностью. Если она ниже 60%, бот отвечает «не уверен».
 5. **Совет** берётся из файла `advice/advice.json` на нужном языке.
 6. **История.** Сохраняются только дата, диагноз и уверенность (без фото) для команды `/history`.
+7. **JSON для AgroQyzyl.** Для командного бота результат можно получить в едином формате с обеими программами проекта (диагноз, уверенность, советы на kk и ru, флаг `ok`): `to_agroqyzyl(класс, уверенность)` в `bot/agroqyzyl.py`. Формат: [docs/agroqyzyl-format.md](docs/agroqyzyl-format.md), пример: `examples/agroqyzyl_rice_doctor.json`. Если сеть не уверена, `ok` равен `false`, а в `error` написана причина.
 
 ## 5. Технологии
 
@@ -228,6 +229,7 @@ innofest-rice-doctor/
 │   ├── handlers.py        # /start, /help, /history, приём фото
 │   ├── keyboards.py       # кнопки выбора языка
 │   ├── texts.py           # тексты бота на kk / ru, format_answer()
+│   ├── agroqyzyl.py       # to_agroqyzyl(): ответ в едином JSON для AgroQyzyl
 │   ├── users.py           # запоминает язык пользователя (data/user_langs.json)
 │   └── history.py         # история проверок (SQLite)
 ├── model/
@@ -241,10 +243,13 @@ innofest-rice-doctor/
 ├── tests/
 │   ├── test_predict.py    # predict() с подменённой моделью, порог 60%
 │   ├── test_texts.py      # format_answer на kk / ru
-│   └── test_advice.py     # advice.json: все классы и оба языка
+│   ├── test_advice.py     # advice.json: все классы и оба языка
+│   └── test_agroqyzyl.py  # JSON для AgroQyzyl: ключи, kk/ru, «не уверен»
+├── examples/
+│   └── agroqyzyl_rice_doctor.json  # пример ответа для AgroQyzyl
 ├── data/                  # фото для обучения (не в git)
 ├── models/                # rice_doctor.keras + classes.json (не в git)
-├── docs/                  # задачи, заметки
+├── docs/                  # задачи, заметки, agroqyzyl-format.md (единый формат JSON)
 ├── .env.example           # пример настроек без секретов
 ├── requirements.txt
 └── README.md
