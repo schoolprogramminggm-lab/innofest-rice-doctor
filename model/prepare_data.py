@@ -52,10 +52,12 @@ def main():
         print("Скачайте Paddy Doctor с Kaggle и распакуйте в data/raw/")
         return
 
-    # Удаляем старые train/val, чтобы при повторном запуске не было дублей
+    # Удаляем старые папки ЧЕТЫРЁХ болезней, чтобы при повторном запуске не было дублей.
+    # Папку not_rice (её делает download_not_rice.py) не трогаем.
     for folder in (TRAIN_DIR, VAL_DIR):
-        if folder.exists():
-            shutil.rmtree(folder)
+        for our_name in CLASSES.values():
+            if (folder / our_name).exists():
+                shutil.rmtree(folder / our_name)
 
     rnd = random.Random(SEED)
     table = []  # строки для итоговой таблицы

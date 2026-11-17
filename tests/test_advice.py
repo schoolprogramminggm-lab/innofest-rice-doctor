@@ -5,6 +5,8 @@ from pathlib import Path
 
 CLASSES = ["healthy", "blast", "brown_spot", "bacterial_blight"]
 LANGS = ["kk", "ru"]
+# Разделы подробного ответа, которые хранятся списком строк
+LIST_FIELDS = ["signs", "first_3_days", "prevention", "call_agronomist"]
 
 ADVICE_PATH = Path(__file__).resolve().parent.parent / "advice" / "advice.json"
 ADVICE = json.loads(ADVICE_PATH.read_text(encoding="utf-8"))
@@ -30,8 +32,28 @@ def test_advice_length_3_or_4_lines():
             assert 3 <= len(ADVICE[label][lang]["advice"]) <= 4, f"{label}/{lang}"
 
 
+def test_every_detail_field_in_both_languages():
+    # Подробный ответ (кнопка «Подробнее»): пять разделов для каждой болезни на kk и ru
+    for label in CLASSES:
+        for lang in LANGS:
+            entry = ADVICE[label][lang]
+            assert isinstance(entry["danger"], str) and entry["danger"].strip(), f"{label}/{lang}: danger"
+            for key in LIST_FIELDS:
+                assert isinstance(entry[key], list) and entry[key], f"{label}/{lang}: нет {key}"
+                assert all(line.strip() for line in entry[key]), f"{label}/{lang}: пустая строка в {key}"
+
+
+def test_kazakh_text_differs_from_russian():
+    # Защита от случайно скопированного русского текста в казахский раздел
+    for label in CLASSES:
+        for key in ["danger"] + LIST_FIELDS:
+            assert ADVICE[label]["kk"][key] != ADVICE[label]["ru"][key], f"{label}/{key}"
+
+
 def test_classes_match_model_classes():
-    # Список классов в советах совпадает с тем, что знает модель (если файл есть локально)
+    # Болезни в советах совпадают с классами модели без not_rice (если файл есть локально).
+    # not_rice - не болезнь, советов для него нет: бот отвечает отдельным текстом.
     classes_file = Path(__file__).resolve().parent.parent / "models" / "classes.json"
     if classes_file.exists():
-        assert sorted(json.loads(classes_file.read_text(encoding="utf-8"))) == sorted(ADVICE)
+        model_classes = json.loads(classes_file.read_text(encoding="utf-8"))
+        assert sorted(c for c in model_classes if c != "not_rice") == sorted(ADVICE)

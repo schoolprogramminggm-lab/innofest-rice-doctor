@@ -80,6 +80,33 @@ def test_threshold_is_60_percent():
     assert to_agroqyzyl("blast", 0.60)["ok"] is True
 
 
+@pytest.mark.parametrize("confidence", [0.9999, 1.0])
+def test_confidence_is_capped_at_99_percent(confidence):
+    answer = to_agroqyzyl("blast", confidence)
+    assert answer["result"]["confidence"] == pytest.approx(0.99)
+    for lang in ("kk", "ru"):
+        assert "99%" in answer["message"][lang]
+        assert "100%" not in answer["message"][lang]
+
+
+def test_not_rice_is_ok_false_with_clear_message():
+    answer = to_agroqyzyl("not_rice", 0.97)
+    check_envelope(answer)
+    assert answer["ok"] is False
+    assert answer["result"] is None  # диагноза нет
+    assert "не лист риса" in answer["error"]
+    assert "97%" in answer["error"]
+    # понятный message на обоих языках, без диагноза
+    assert answer["message"]["ru"] == "Это не похоже на лист риса. Сфотографируйте лист ближе."
+    assert answer["message"]["kk"] == texts.get_text("not_rice", "kk")
+    assert "Диагноз" not in answer["message"]["ru"]
+
+
+def test_not_rice_error_never_says_100_percent():
+    answer = to_agroqyzyl("not_rice", 0.9999)
+    assert "99%" in answer["error"] and "100%" not in answer["error"]
+
+
 def test_unknown_class():
     answer = to_agroqyzyl("rust", 0.95)
     check_envelope(answer)

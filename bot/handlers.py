@@ -11,17 +11,22 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 
 from bot import users
-from bot.keyboards import language_keyboard
-from bot.texts import LANGS, format_answer, get_text
+from bot.keyboards import details_keyboard, language_keyboard
+from bot.texts import ADVICE, LANGS, format_answer, format_details, get_text, needs_details
 from model import predict as model_predict
 
 router = Router()
 
 
 def answer_for_photo(image_bytes, lang):
-    """Фото (байты) -> готовый текст ответа. Отдельная функция, чтобы её было легко тестировать."""
+    """
+    Фото (байты) -> (текст короткого ответа, диагноз для кнопки «Подробнее»).
+    Диагноз равен None, если кнопка не нужна: бот не уверен или на фото не лист риса.
+    Отдельная функция, чтобы её было легко тестировать.
+    """
     label, confidence = model_predict.predict(image_bytes)
-    return format_answer(label, confidence, lang)
+    text = format_answer(label, confidence, lang)
+    return text, (label if needs_details(label, confidence) else None)
 
 
 @router.message(CommandStart())
@@ -57,11 +62,26 @@ async def handle_photo(message: Message):
         await message.bot.download(message.photo[-1], destination=buffer)
         # Нейросеть считает долго, поэтому запускаем в отдельном потоке,
         # чтобы бот не «зависал» для других пользователей
-        text = await asyncio.to_thread(answer_for_photo, buffer.getvalue(), lang)
+        text, label = await asyncio.to_thread(answer_for_photo, buffer.getvalue(), lang)
     except Exception:
         logging.exception("Не удалось обработать фото")
-        text = get_text("error", lang)
-    await message.answer(text)
+        text, label = get_text("error", lang), None
+    # Кнопка «Подробнее» есть только у ответа с диагнозом
+    keyboard = details_keyboard(label, lang) if label else None
+    await message.answer(text, reply_markup=keyboard)
+
+
+@router.callback_query(F.data.startswith("more:"))
+async def show_details(callback: CallbackQuery):
+    label = callback.data.split(":")[1]  # "more:blast" -> "blast"
+    if label not in ADVICE:
+        await callback.answer()
+        return
+    lang = users.get_lang(callback.from_user.id)
+    await callback.message.answer(format_details(label, lang))
+    # Убираем кнопку, чтобы подробный ответ не отправляли повторно
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.answer()
 
 
 @router.message()

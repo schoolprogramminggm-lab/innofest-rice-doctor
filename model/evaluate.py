@@ -3,9 +3,12 @@
 Эти фото сеть при обучении не видела, поэтому проверка честная.
 
 Печатает:
-- общую точность;
+- общую точность (по всем классам, включая not_rice);
+- точность только по 4 болезням (фото листьев; ответ not_rice считается ошибкой);
 - матрицу ошибок (что сеть путает с чем);
-- precision / recall / F1 по каждому классу.
+- precision / recall / F1 по каждому классу;
+- как работает порог NOT_RICE_THRESHOLD из .env (сколько посторонних фото найдено,
+  сколько листьев ошибочно названо «не лист»).
 
 Запуск (из корня проекта):
     python model/evaluate.py
@@ -18,6 +21,8 @@ import sys
 import numpy as np
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
 from tensorflow import keras
+
+from predict import NOT_RICE_THRESHOLD, choose_answer  # порог читается из .env в одном месте: predict.py
 
 VAL_DIR = "data/val"
 MODEL_PATH = "models/rice_doctor.keras"
@@ -40,13 +45,21 @@ def main():
 
     # Правильные ответы (номера классов)
     y_true = np.concatenate([labels.numpy() for _, labels in val_data])
-    # Ответы сети: для каждого фото 4 вероятности, берём номер самой большой
+    # Ответы сети: для каждого фото вероятности всех классов
     probabilities = model.predict(val_data)
-    y_pred = probabilities.argmax(axis=1)
+    # Ответ выбираем тем же правилом, что и бот (predict.choose_answer):
+    # учитывается порог NOT_RICE_THRESHOLD, поэтому цифры ниже - это то, что увидит пользователь
+    y_pred = np.array([classes.index(choose_answer(p, classes)[0]) for p in probabilities])
 
     # 1. Общая точность: доля фото, где сеть ответила правильно
     accuracy = accuracy_score(y_true, y_pred)
     print(f"\nТочность на проверочной части: {accuracy:.1%} ({len(y_true)} фото)\n")
+
+    # 1б. Точность только по листьям с болезнями и здоровым (классы кроме not_rice)
+    if "not_rice" in classes:
+        leaf = y_true != classes.index("not_rice")
+        leaf_accuracy = accuracy_score(y_true[leaf], y_pred[leaf])
+        print(f"Точность по 4 болезням (без not_rice): {leaf_accuracy:.1%} ({leaf.sum()} фото)\n")
 
     # 2. Матрица ошибок: строка - правильный класс, столбец - ответ сети.
     #    Числа на диагонали - верные ответы, всё остальное - ошибки.
@@ -66,6 +79,15 @@ def main():
     print("|---|---|---|---|---|")
     for i, name in enumerate(classes):
         print(f"| {name} | {precision[i]:.2f} | {recall[i]:.2f} | {f1[i]:.2f} | {support[i]} |")
+
+    # 4. Порог "не лист риса": как в боте, смотрим на вероятность not_rice
+    if "not_rice" in classes:
+        p_not_rice = probabilities[:, classes.index("not_rice")]
+        flagged = p_not_rice >= NOT_RICE_THRESHOLD  # эти фото бот назвал бы "не лист риса"
+        n_other = (~leaf).sum()
+        print(f"\nПорог NOT_RICE_THRESHOLD = {NOT_RICE_THRESHOLD}:")
+        print(f"- посторонних фото распознано как «не лист»: {flagged[~leaf].sum()} из {n_other}")
+        print(f"- листьев ошибочно названо «не лист»: {flagged[leaf].sum()} из {leaf.sum()}")
 
 
 if __name__ == "__main__":
