@@ -219,7 +219,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 # данные не храним в репозитории (фото и снимки тяжёлые, лимит GitHub 100 МБ)
-data/
+data/*
+# но список источников и лицензий (CSV) храним в git
+!data/sources.csv
 *.tif
 *.jp2
 *.h5

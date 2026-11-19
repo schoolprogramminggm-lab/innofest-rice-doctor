@@ -23,7 +23,7 @@ import time
 
 import numpy as np
 from dotenv import load_dotenv
-from PIL import Image
+from PIL import Image, ImageOps
 
 # Настройки берём из файла .env (если его нет - используем значения по умолчанию)
 load_dotenv()
@@ -80,6 +80,7 @@ def percent(confidence):
 def load_photo(image_bytes):
     """
     Подготовить фото (байты, как их скачал бот) для сети ТОЧНО ТАК ЖЕ, как при обучении:
+    0) повернуть по EXIF: телефон мог снять фото боком и записать поворот в метку, а не в пиксели;
     1) уменьшить до 256 по длинной стороне (как в prepare_data.py);
     2) сжать до 224x224 тем же способом, что и при обучении (tf.image.resize).
     Числа остаются 0..255: нормализация (x / 127.5 - 1) уже встроена в саму модель.
@@ -87,7 +88,7 @@ def load_photo(image_bytes):
     """
     import tensorflow as tf
 
-    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    img = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert("RGB")
     img.thumbnail((256, 256))
     pixels = tf.image.resize(np.array(img), (224, 224)).numpy()  # 224 x 224 x 3
     return np.expand_dims(pixels, axis=0)  # сеть ждёт пачку фото: 1 x 224 x 224 x 3
@@ -136,7 +137,7 @@ def main():
     elif confidence < THRESHOLD:
         # Сеть сомневается: честно говорим "не уверен", а не гадаем
         print(f"Не уверен (лучший вариант: {NAMES_RU[label]}, {percent(confidence)}).")
-        print("Сфотографируйте лист ближе, при дневном свете, на однотонном фоне.")
+        print("Сфотографируйте лист ближе, при дневном свете.")
     else:
         print(f"Диагноз: {NAMES_RU[label]} ({label})")
         print(f"Уверенность: {percent(confidence)}")

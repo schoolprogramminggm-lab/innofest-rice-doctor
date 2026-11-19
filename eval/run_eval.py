@@ -7,7 +7,8 @@
    (model.predict.predict(): тот же размер, тот же порог not_rice).
 3. Печатает: accuracy, precision / recall / F1 по классам, матрицу ошибок, время на фото
    и список ВСЕХ ошибок (файл, ожидалось, ответ модели, уверенность).
-4. Сохраняет ответ по каждому фото в eval/results.csv (по нему пишется docs/accuracy-external.md).
+4. Сохраняет ответ по каждому фото в eval/results_<имя модели>.csv, например eval/results_rice_doctor_v4.csv
+   (по нему пишется docs/accuracy-external.md; разные модели не затирают друг друга).
 
 Модель здесь НЕ обучается и не меняется, только проверяется.
 
@@ -30,7 +31,6 @@ from model import predict  # noqa: E402  (импорт после sys.path ну�
 
 IMAGES = ROOT / "eval" / "images"
 LABELS = ROOT / "eval" / "labels.csv"
-RESULTS = ROOT / "eval" / "results.csv"
 
 # Порядок классов в таблицах: как в README
 CLASSES = ["healthy", "blast", "brown_spot", "bacterial_blight", "not_rice"]
@@ -42,6 +42,7 @@ def main():
     predict.CLASSES_PATH = str(ROOT / "models" / "classes.json")
     predict.load_model()  # грузим заранее, чтобы время на фото не включало загрузку модели
     print("Модель:", predict.MODEL_PATH)
+    results_file = ROOT / "eval" / f"results_{Path(predict.MODEL_PATH).stem}.csv"
 
     with open(LABELS, encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
@@ -108,11 +109,11 @@ def main():
         print(f"  {r['file']:<34} ожидалось {r['expected']:<17} ответ {r['got']:<17} уверенность {predict.percent(r['confidence'])}")
 
     # --- Сохраняем результаты по каждому фото ---
-    with open(RESULTS, "w", encoding="utf-8", newline="") as f:
+    with open(results_file, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["file", "expected", "got", "confidence", "seconds"])
         writer.writeheader()
         writer.writerows(results)
-    print(f"\nОтветы по каждому фото: {RESULTS.relative_to(ROOT)}")
+    print(f"\nОтветы по каждому фото: {results_file.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

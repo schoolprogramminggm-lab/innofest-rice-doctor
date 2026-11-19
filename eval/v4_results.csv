@@ -1,0 +1,8 @@
+test_set,class,photos,correct
+paddy_doctor,healthy,353,348
+paddy_doctor,blast,348,291
+paddy_doctor,brown_spot,193,173
+paddy_doctor,bacterial_blight,96,81
+paddy_doctor,ALL,990,893
+openimages,not_rice,100,97
+openimages,ALL,100,97
